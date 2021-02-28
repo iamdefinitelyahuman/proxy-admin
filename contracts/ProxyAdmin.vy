@@ -6,6 +6,32 @@
 @license MIT
 """
 
+
+event TransactionExecuted:
+    admin: indexed(address)
+    target: indexed(address)
+    calldata: Bytes[100000]
+    value: uint256
+
+event RequestAdminChange:
+    current_admin: address
+    future_admin: address
+
+event RevokeAdminChange:
+    current_admin: address
+    future_admin: address
+    calling_admin: address
+
+event ApproveAdminChange:
+    current_admin: address
+    future_admin: address
+    calling_admin: address
+
+event AcceptAdminChange:
+    previous_admin: address
+    current_admin: address
+
+
 admins: public(address[2])
 
 pending_current_admin: uint256
@@ -32,7 +58,9 @@ def execute(_target: address, _calldata: Bytes[100000]):
     @param _calldata Calldata to use in the call
     """
     assert msg.sender in self.admins  # dev: only admin
+
     raw_call(_target, _calldata, value=msg.value)
+    log TransactionExecuted(msg.sender, _target, _calldata, msg.value)
 
 
 @view
@@ -61,11 +89,14 @@ def request_admin_change(_new_admin: address):
 
     admin_list: address[2] = self.admins
     assert _new_admin not in admin_list  # dev: new admin is already admin
+
     for i in range(2):
         if admin_list[i] == msg.sender:
             self.pending_current_admin = i + 1
             self.pending_new_admin = _new_admin
+            log RequestAdminChange(msg.sender, _new_admin)
             return
+
     raise  # dev: only admin
 
 
@@ -76,9 +107,12 @@ def approve_admin_change():
     @dev Only callable by the 2nd admin address (the one that will not change)
     """
     idx: uint256 = self.pending_current_admin
+
     assert idx > 0  # dev: no active request
     assert msg.sender == self.admins[idx % 2]  # dev: caller is not 2nd admin
+
     self.change_approved = True
+    log ApproveAdminChange(self.admins[idx - 1], self.pending_new_admin, msg.sender)
 
 
 @external
@@ -89,9 +123,18 @@ def revoke_admin_change():
          even if approval has previous been given
     """
     assert msg.sender in self.admins  # dev: only admin
+
+    idx: uint256 = self.pending_current_admin
+    pending_admin: address = ZERO_ADDRESS
+    if idx > 0:
+        pending_admin = self.admins[idx - 1]
+
+    log RevokeAdminChange(pending_admin, self.pending_new_admin, msg.sender)
+
     self.pending_current_admin = 0
     self.pending_new_admin = ZERO_ADDRESS
     self.change_approved = False
+
 
 
 @external
@@ -102,7 +145,10 @@ def accept_admin_change():
     """
     assert self.change_approved == True  # dev: change not approved
     assert msg.sender == self.pending_new_admin  # dev: only new admin
-    self.admins[self.pending_current_admin - 1] = msg.sender
+
+    idx: uint256 = self.pending_current_admin - 1
+    log AcceptAdminChange(self.admins[idx], msg.sender)
+    self.admins[idx] = msg.sender
 
     self.pending_current_admin = 0
     self.pending_new_admin = ZERO_ADDRESS
