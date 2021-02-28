@@ -8,12 +8,13 @@ def test_approve_admin_change(accounts, proxy, charlie, request_idx, approve_idx
     proxy.request_admin_change(charlie, {"from": accounts[request_idx]})
     proxy.approve_admin_change({"from": accounts[approve_idx]})
 
-    proxy.accept_admin_change({"from": charlie})
+    tx = proxy.accept_admin_change({"from": charlie})
 
     assert proxy.admins(request_idx) == charlie
     assert proxy.admins(approve_idx) == accounts[approve_idx]
 
     assert proxy.get_admin_change_status() == [ZERO_ADDRESS, ZERO_ADDRESS, False]
+    assert tx.events["AcceptAdminChange"] == [accounts[request_idx], charlie]
 
 
 def test_no_approval(accounts, proxy, alice, charlie):

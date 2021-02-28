@@ -42,6 +42,7 @@ def test_execute(proxy, alice, target, st_calldata, st_value):
     tx = proxy.execute(target, st_calldata, {"from": alice, "value": st_value})
 
     assert tx.events["Data"] == [f"0x{st_calldata.hex()}", st_value]
+    assert tx.events["TransactionExecuted"] == [alice, target, f"0x{st_calldata.hex()}", st_value]
 
 
 def test_return_data(proxy, bob, target):

@@ -5,9 +5,14 @@ import pytest
 @pytest.mark.parametrize("request_idx,approve_idx", [(0, 1), (1, 0)])
 def test_approve_admin_change(accounts, proxy, charlie, request_idx, approve_idx):
     proxy.request_admin_change(charlie, {"from": accounts[request_idx]})
-    proxy.approve_admin_change({"from": accounts[approve_idx]})
+    tx = proxy.approve_admin_change({"from": accounts[approve_idx]})
 
     assert proxy.get_admin_change_status() == [accounts[request_idx], charlie, True]
+    assert tx.events["ApproveAdminChange"] == [
+        accounts[request_idx],
+        charlie,
+        accounts[approve_idx],
+    ]
 
 
 def test_no_active_request(proxy, alice, charlie):

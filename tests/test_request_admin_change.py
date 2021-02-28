@@ -8,8 +8,10 @@ def test_initial_getter(proxy):
 
 
 def test_request_admin(proxy, alice, charlie):
-    proxy.request_admin_change(charlie, {"from": alice})
+    tx = proxy.request_admin_change(charlie, {"from": alice})
+
     assert proxy.get_admin_change_status() == [alice, charlie, False]
+    assert tx.events["RequestAdminChange"] == [alice, charlie]
 
 
 def test_request_admin_no_auth(proxy, alice, charlie):
